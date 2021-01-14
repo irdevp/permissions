@@ -32,6 +32,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   static final DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
   Map<String, dynamic> _deviceData = <String, dynamic>{};
+  bool filter = false;
   String _platformVersion = 'Unknown';
   String localization = "";
   String wifiBSSID = "";
@@ -39,6 +40,7 @@ class _MyAppState extends State<MyApp> {
   String wifiName = "";
   String uuid = "";
   String imei = "";
+  bool load = false;
   List<String> multiImei = [];
   @override
   void initState() {
@@ -47,6 +49,9 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initPlatformState() async {
+    setState(() {
+      load = true;
+    });
     Map<String, dynamic> deviceData;
     imei = await ImeiPlugin.getImei();
     multiImei = await ImeiPlugin.getImeiMulti(); //for double-triple SIM phones
@@ -76,9 +81,19 @@ class _MyAppState extends State<MyApp> {
 
     try {
       if (Platform.isAndroid) {
-        deviceData = _readAndroidBuildData(await deviceInfoPlugin.androidInfo);
+        if (filter) {
+          deviceData =
+              _readAndroidShortBuildData(await deviceInfoPlugin.androidInfo);
+        } else {
+          deviceData =
+              _readAndroidBuildData(await deviceInfoPlugin.androidInfo);
+        }
       } else if (Platform.isIOS) {
-        deviceData = _readIosDeviceInfo(await deviceInfoPlugin.iosInfo);
+        if (filter) {
+          deviceData = _readIosDeviceShortInfo(await deviceInfoPlugin.iosInfo);
+        } else {
+          deviceData = _readIosDeviceInfo(await deviceInfoPlugin.iosInfo);
+        }
       }
     } on PlatformException {
       deviceData = <String, dynamic>{
@@ -90,6 +105,7 @@ class _MyAppState extends State<MyApp> {
 
     setState(() {
       _deviceData = deviceData;
+      load = false;
     });
   }
 
@@ -131,6 +147,31 @@ class _MyAppState extends State<MyApp> {
     };
   }
 
+  Map<String, dynamic> _readAndroidShortBuildData(AndroidDeviceInfo build) {
+    return <String, dynamic>{
+      'model': build.model,
+      'isPhysicalDevice': build.isPhysicalDevice,
+      'MAC': _platformVersion,
+      'Localization': localization,
+      'Wifi BSSID': wifiBSSID,
+      'Wifi Name': wifiName,
+      'Wifi IP': wifiIP,
+      'IMEI': multiImei.toString()
+    };
+  }
+
+  Map<String, dynamic> _readIosDeviceShortInfo(IosDeviceInfo data) {
+    return <String, dynamic>{
+      'model': data.model,
+      'isPhysicalDevice': data.isPhysicalDevice,
+      'MAC': _platformVersion,
+      'Localization': localization,
+      'Wifi BSSID': wifiBSSID,
+      'Wifi Name': wifiName,
+      'Wifi IP': wifiIP
+    };
+  }
+
   Map<String, dynamic> _readIosDeviceInfo(IosDeviceInfo data) {
     return <String, dynamic>{
       'name': data.name,
@@ -159,34 +200,69 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
+          backgroundColor: Color(0xFF283266),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.refresh),
+              onPressed: () {
+                initPlatformState();
+              },
+            ),
+            IconButton(
+              icon: filter ? Icon(Icons.list) : Icon(Icons.filter_alt),
+              onPressed: () {
+                setState(() {
+                  filter = !filter;
+                });
+                initPlatformState();
+              },
+            ),
+            SizedBox(
+              width: 10,
+            )
+          ],
           title: Text(Platform.isAndroid ? 'Android' : 'iOS'),
         ),
-        body: ListView(
-          children: _deviceData.keys.map((String property) {
-            return Row(
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Text(
-                    property,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(
-                    child: Container(
-                  padding: const EdgeInsets.fromLTRB(0.0, 10.0, 0.0, 10.0),
-                  child: Text(
-                    '${_deviceData[property]}',
-                    maxLines: 10,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                )),
-              ],
-            );
-          }).toList(),
-        ),
+        body: !load
+            ? ListView(
+                children: _deviceData.keys.map((String property) {
+                  return Row(
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Text(
+                          property,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFFF56E28),
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Montserrat'),
+                        ),
+                      ),
+                      Expanded(
+                          child: Container(
+                        padding:
+                            const EdgeInsets.fromLTRB(0.0, 10.0, 0.0, 10.0),
+                        child: Text(
+                          '${_deviceData[property]}',
+                          maxLines: 10,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Montserrat'),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      )),
+                    ],
+                  );
+                }).toList(),
+              )
+            //Color(0xFF283266)
+            : Center(
+                child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFFF56E28))),
+              ),
       ),
     );
   }
