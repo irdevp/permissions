@@ -149,13 +149,16 @@ class _MyAppState extends State<MyApp> {
 
   Map<String, dynamic> _readAndroidShortBuildData(AndroidDeviceInfo build) {
     return <String, dynamic>{
-      'model': build.model,
-      'isPhysicalDevice': build.isPhysicalDevice,
+      'ip_address': wifiIP,
+      'BSSID': wifiBSSID,
+      'SSID': wifiName,
       'MAC': _platformVersion,
+      "fcm": "null",
+      'Versão SO': build.version.release,
+      'Plataforma': 'Android',
+      'fabricante': build.manufacturer,
+      'model': build.model,
       'Localization': localization,
-      'Wifi BSSID': wifiBSSID,
-      'Wifi Name': wifiName,
-      'Wifi IP': wifiIP,
       'IMEI': multiImei.toString()
     };
   }
